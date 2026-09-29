@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.rs text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.py text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+*.c text eol=lf
+*.cmd text eol=crlf
+*.pcap binary
+*.pcapng binary
+*.hl7 binary

@@ -1,0 +1,36 @@
+[package]
+name = "netkit-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+netkit = { path = "../crates/netkit" }
+
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "wire"
+path = "fuzz_targets/wire.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "messages"
+path = "fuzz_targets/messages.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capture_file"
+path = "fuzz_targets/capture_file.rs"
+test = false
+doc = false
+bench = false

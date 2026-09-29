@@ -1,0 +1,15 @@
+name: Parser fuzz smoke
+on: [workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo install cargo-fuzz --locked
+      - run: cargo fuzz run wire -- -max_total_time=60 -max_len=65536
+      - run: cargo fuzz run messages -- -max_total_time=60 -max_len=32768
+      - run: cargo fuzz run capture_file -- -max_total_time=60 -max_len=1048576

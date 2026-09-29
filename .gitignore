@@ -1,0 +1,13 @@
+/target/
+/artifacts/
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/corpus/
+__pycache__/
+*.pyc
+*.pcap
+*.pcapng
+*.etl
+*.keylog
+!tests/fixtures/*.pcap
+!tests/fixtures/*.pcapng

@@ -1,0 +1,21 @@
+[package]
+name = "netkit"
+description = "netKit: embeddable network capture, stream reconstruction and protocol analysis"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+libloading.workspace = true
+libc.workspace = true
+quick-xml.workspace = true
+ipnet.workspace = true
+hpack = "0.3"
+
+[lints]
+workspace = true

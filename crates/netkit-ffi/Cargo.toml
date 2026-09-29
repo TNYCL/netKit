@@ -1,0 +1,19 @@
+[package]
+name = "netkit-ffi"
+description = "Versioned C ABI for netKit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "netkit_ffi"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+netkit.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

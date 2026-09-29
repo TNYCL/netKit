@@ -1,0 +1,63 @@
+name: Validate netKit
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: cargo doc --workspace --no-deps --locked
+      - run: cargo build --release --workspace --locked
+      - run: python tools/verify_ffi.py
+      - name: C++ and synthetic pcap ABI (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: tools\build_cpp.cmd
+      - name: Synthetic backend test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:NETKIT_TEST_PCAP = (Resolve-Path artifacts/mock_pcap.dll).Path
+          cargo test -p netkit --test capture_backend --locked -- --ignored
+      - name: C++ and synthetic backend (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          c++ -std=c++17 -Wall -Wextra -Werror -I include examples/cpp/main.cpp -L target/release -lnetkit_ffi -Wl,-rpath,"$PWD/target/release" -o artifacts/cpp-example
+          artifacts/cpp-example
+          cc -shared -fPIC -Wall -Wextra -Werror tests/fixtures/mock_pcap.c -o artifacts/mock_pcap.so
+          NETKIT_TEST_PCAP="$PWD/artifacts/mock_pcap.so" cargo test -p netkit --test capture_backend --locked -- --ignored
+      - name: Retain executables and SDK libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: netKit-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            target/release/netkit
+            target/release/netkit.exe
+            target/release/*netkit_ffi*.dll
+            target/release/*netkit_ffi*.so
+            target/release/*netkit_ffi*.dylib
+            target/release/*netkit_ffi*.lib
+            target/release/*netkit_ffi*.a
+            include/netkit.h
+            LICENSE-*
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.86.0'
+      - run: cargo check --workspace --all-targets --locked
