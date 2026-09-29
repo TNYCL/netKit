@@ -1,12 +1,12 @@
 # netKit
 
-Rust ile geliştirilen, uygulamalara gömülebilen ağ yakalama ve protokol analiz framework'ü. Ethernet ve Wi-Fi kayıtlarından bağlantı, cihaz gözlemi, uygulama mesajı ve tanılama olayları üretir. CLI adı **`netkit`**, proje adı **netKit**.
+An embeddable network capture and protocol analysis framework written in Rust. It produces connection, device observation, application message, and diagnostic events from Ethernet and Wi-Fi traffic. The command-line tool is **`netkit`**; the project is **netKit**.
 
-Kütüphane, CLI ve C ABI aynı analiz motorunu kullanır. Çekirdek Rust'tır; C++ uygulamaları [C başlığı](include/netkit.h) üzerinden bağlanır. Ürün çekirdeğinde C++ gerekmiyor. PCAP/PCAPNG analizi için yakalama sürücüsü gerekmez.
+The library, CLI, and C ABI share the same analysis engine. The core is written in Rust, and C++ applications integrate through the [C header](include/netkit.h). No C++ implementation is required in the core. PCAP/PCAPNG file analysis works without a capture driver.
 
-## Çalıştırma
+## Getting started
 
-Rust 1.86+ ve platformun C linker'ı gerekir. Windows'ta Visual Studio C++ Build Tools, Linux/macOS'ta normal geliştirme araçları yeterlidir.
+Requires Rust 1.86+ and a C linker for your platform. Use Visual Studio C++ Build Tools on Windows, or the standard development toolchain on Linux/macOS.
 
 ```powershell
 cargo build --release --workspace
@@ -16,16 +16,16 @@ cargo build --release --workspace
 .\target\release\netkit.exe analyze tests\fixtures\clinical-network.pcapng --workers 4 --format jsonl
 ```
 
-Linux/macOS'ta aynı komutların executable yolu `./target/release/netkit` olur. PATH'e kurulum:
+On Linux/macOS, use `./target/release/netkit` as the executable path. To install the CLI into Cargo's binary directory, which should be on your PATH:
 
 ```text
 cargo install --path crates/netkit-cli --locked
 netkit --help
 ```
 
-Windows canlı yakalama, ayrıca kurulan [Npcap](https://npcap.com/guide/npcap-devguide.html) kullanır. netKit, Npcap SDK'sı olmadan derlenir ve `wpcap.dll` dosyasını çalışma anında yükler. Npcap bu depoyla dağıtılmaz. Linux'ta libpcap, macOS'ta sistem libpcap kütüphanesi kullanılır. Arayüz açma yetkisi işletim sistemi ve sürücü ayarına bağlıdır.
+Live capture on Windows uses a separately installed copy of [Npcap](https://npcap.com/guide/npcap-devguide.html). netKit builds without the Npcap SDK and loads `wpcap.dll` at runtime. Npcap is not bundled with this repository. Linux uses libpcap; macOS uses the system libpcap library. Permission to open a capture interface depends on the operating system and driver configuration.
 
-## Komutlar
+## Commands
 
 ```text
 netkit interfaces
@@ -43,11 +43,11 @@ netkit config
 netkit benchmark tests/fixtures/scale.pcapng --iterations 100 --format json
 ```
 
-Varsayılan canlı yakalamada IP/port filtresi yoktur. `--filter` sürücüde BPF uygular; `--host` belirli adresi seçer. `--protocol` yalnızca çıktı mesajlarını seçer, `--decode-as` çözücüyü zorlar. `--packets` IP paketlerinin katman özetlerini de verir. `--output` ham PCAPNG kaydeder; var olan dosyayı değiştirmek için ayrıca `--overwrite` gerekir. `Ctrl+C` kuyruğu boşaltır ve çıktıyı kapatır.
+Live capture applies no IP or port filter by default. `--filter` applies a BPF expression at the capture backend; `--host` selects a specific address. `--protocol` filters output messages, while `--decode-as` forces a decoder. `--packets` also emits layer summaries for IP packets. `--output` writes raw PCAPNG; replacing an existing file requires `--overwrite`. `Ctrl+C` drains the queue and closes the output.
 
-`devices` gözlenen IP ve kimlik iddialarını verir; `flows` iki yönlü IP/port konuşmalarını, sayaçları ve bulunan protokolleri verir. Hedef olarak görülen bir IP, çevrimiçi cihazın kesin kanıtı değildir; `evidence` alanını kontrol edin.
+`devices` reports observed IP addresses and identity claims. `flows` reports bidirectional IP/port conversations, counters, and detected protocols. An IP address seen only as a destination is not proof of an online device; check the `evidence` field.
 
-Açık port kontrolü, pasif yakalamadan ayrı ve açıkça çağrılan komutlardır:
+Active host and port discovery use explicit commands, separate from passive capture:
 
 ```text
 netkit discover --network 192.168.1.0/24 --ports 80,443 --rate 50
@@ -55,23 +55,23 @@ netkit scan --target 192.168.1.37 --ports 1-65535 --tcp --rate 100
 netkit scan --target 192.168.1.37 --ports 53,123 --udp
 ```
 
-TCP bağlantısı ve UDP yanıtı kanıt olarak raporlanır. UDP sessizliği `open_or_filtered`, TCP zaman aşımı `no_response` olur. Tarama kapsamı, hız, eşzamanlılık ve toplam deneme sayısı sınırlıdır. Normal `capture` ve `devices` komutları tarama paketi göndermez.
+Established TCP connections and received UDP replies are reported as evidence. UDP silence produces `open_or_filtered`; a TCP timeout produces `no_response`. Scan scope, rate, concurrency, and total probe count are bounded. The regular `capture` and `devices` commands do not send scan probes.
 
-## Görünürlük
+## Traffic visibility
 
-Tüm IP/portları **arayüze ulaşan paketler içinde** işler. Switch üzerindeki başka iki cihazın unicast trafiğini görmek için SPAN/mirror, TAP veya trafiğin geçtiği bir gözlem noktası gerekir. Aynı ağa bağlı olmak bütün konuşmaları görünür yapmaz.
+netKit processes all IP addresses and ports **within the packets delivered to the selected interfaces**. Observing unicast traffic between two other devices on a switched network requires a SPAN/mirror port, a network TAP, or a capture point along the traffic path. Being connected to the same network does not make every conversation visible.
 
-Wi-Fi normal modda çoğunlukla Ethernet biçiminde sunulur. Ham 802.11/Radiotap ve monitor modu donanım/sürücü desteğine bağlıdır; monitor moduna geçiş Wi-Fi bağlantısını kesebilir. Çoklu arayüz yakalama her arayüzü ayrı açar; kaynak kimliğini korur. Linux `any` arayüzü ayrıca seçilebilir; `--all-interfaces` mükerrer kayıtları azaltmak için `any` yerine açık arayüzleri seçer. Aynı paket farklı gözlem noktalarında görülürse otomatik olarak birleştirilmez.
+Wi-Fi traffic in normal mode is commonly presented as Ethernet frames. Raw 802.11/Radiotap capture and monitor mode depend on hardware and driver support; switching to monitor mode can disconnect the Wi-Fi connection. Multi-interface capture opens each interface separately and preserves its source identity. The Linux `any` interface can be selected explicitly; `--all-interfaces` selects interfaces marked as up rather than `any` to reduce duplicate observations. Packets observed at different capture points are not automatically deduplicated.
 
-Şifreli içerik kendiliğinden çözülmez. Yerleşik TLS ve QUIC çözümlemesi görünür metadata ile sınırlıdır. Ayrı kurulu TShark ile geniş protokol kapsamı ve desteklenen oturumlar için keylog kullanılabilir:
+Encrypted content is not automatically decrypted. Native TLS and QUIC analysis is limited to visible metadata. A separately installed TShark provides broader protocol coverage and can use a keylog file for supported sessions:
 
 ```text
 netkit deep network.pcapng --keylog session.keylog --include-sensitive --format jsonl
 ```
 
-Bu komut harici TShark JSON çıktısını geçirir; yerleşik olay şeması ve maskeleme uygulanmaz. [Destek matrisi](docs/SUPPORT.md) kapsamı ve sınırlamaları ayrıntılı gösterir.
+This command passes through external TShark JSON output; the native event schema and redaction do not apply. See the [support matrix](docs/SUPPORT.md) for detailed coverage and limitations.
 
-## Rust entegrasyonu
+## Rust integration
 
 ```toml
 [dependencies]
@@ -100,7 +100,7 @@ fn main() -> Result<()> {
 }
 ```
 
-Uygulama kendi `Packet` kaynağını sağlayabilir, `capture::Pcap` ile canlı arayüz açabilir veya `pipeline::AnalysisPool` kullanabilir. `Decoder` / `DecodeSession` trait'leri ile özel protokol eklenir. Hazır bir uygulama mesajı `Engine::decode_message` ile ağ açmadan çözülür. [API ve mimari](docs/ARCHITECTURE.md), [çalışır Rust örnekleri](crates/netkit/examples), [C++ örneği](examples/cpp/main.cpp).
+Applications can supply their own `Packet` source, open a live interface through `capture::Pcap`, or use `pipeline::AnalysisPool`. Add custom protocols with the `Decoder` and `DecodeSession` traits. Decode application-provided message bytes with `Engine::decode_message` without opening a network connection. See the [API and architecture guide](docs/ARCHITECTURE.md), [runnable Rust examples](crates/netkit/examples), and [C++ example](examples/cpp/main.cpp).
 
 ```powershell
 cargo run -p netkit --example decode
@@ -108,11 +108,11 @@ cmd /c tools\build_cpp.cmd
 python tools\verify_ffi.py
 ```
 
-## Doğrulama ve mevcut durum
+## Validation and current status
 
-Kodda paket okuyucu/yazıcı, canlı yakalama arka ucu, akış motoru, yerleşik çözücüler, sınırlı paralel işlem hattı, aktif tarama, CLI ve C ABI bulunur. Bu, bütün standartların ve cihaz varyantlarının eksiksiz desteklendiği anlamına gelmez. Özellikle medikal protokoller yapısal olarak çözülür; üretici profili uygunluk onayı verilmez.
+The implementation includes capture-file readers and writers, a live capture backend, a flow engine, native decoders, a bounded parallel processing pipeline, active discovery, a CLI, and a C ABI. This does not imply complete support for every standard or device variant. Medical protocols are parsed structurally; vendor-profile conformance is not certified.
 
-Windows x64 üzerinde sentetik kayıtlar, Rust testleri, gerçek DLL üzerinden ABI ve C++ derlemesi doğrulandı. Gerçek Npcap adaptörü, Linux/macOS canlı yakalama, TShark entegrasyonu, 24 saat donanım testi ve klinik cihaz karşılaştırmaları bu ortamda doğrulanmadı. Üç platform için CI ve fuzz iş akışları depoda yer alır; dosyalarının bulunması bu işlerin çalıştığı anlamına gelmez. Ayrıntılar [doğrulama kaydında](docs/VALIDATION.md).
+Synthetic captures, Rust tests, the ABI through the compiled DLL, and C++ compilation were verified locally on Windows x64. Real Npcap adapters, Linux/macOS live capture, TShark integration, a 24-hour hardware test, and comparisons against clinical devices were not validated in that environment. CI for all three platforms and a fuzz workflow are included in the repository; their presence alone is not evidence of successful execution. See the [validation record](docs/VALIDATION.md) for details.
 
 ```text
 cargo fmt --all -- --check
@@ -122,8 +122,8 @@ cargo doc --workspace --no-deps
 python tools/validate.py --seconds 120
 ```
 
-Varsayılan çıktıda HL7 segmentleri, ASTM kayıtları, POCT XML alanları, DICOM dataset değerleri ve HTTP başlık değerleri maskelenir. `--include-sensitive` veya `EngineConfig.include_sensitive` ayrıntıları açar. Ham PCAPNG, IP/MAC/hostname, mesaj kontrol ID'leri ve özel çözücü çıktıları bu maskenin kapsamında değildir. Maskeleme bir anonimleştirme veya mevzuat uygunluğu garantisi değildir. Depodaki test verileri sentetiktir.
+Default output redacts HL7 segments, ASTM records, POCT XML fields, DICOM dataset values, and HTTP header values. Enable `--include-sensitive` or `EngineConfig.include_sensitive` to expose those details. Raw PCAPNG, IP/MAC addresses, hostnames, message control IDs, and custom decoder output are outside this redaction policy. Redaction does not guarantee anonymization or regulatory compliance. All test data in this repository is synthetic.
 
-## Lisans
+## License
 
-netKit kodu **MIT OR Apache-2.0**: [MIT](LICENSE-MIT), [Apache-2.0](LICENSE-APACHE). Ticari entegrasyona uygundur. Bağımlılıklar kendi lisanslarını korur; Npcap ve TShark ayrıca temin edilir. [Katkı rehberi](CONTRIBUTING.md), [güvenlik bildirimi](SECURITY.md).
+netKit is dual-licensed under **MIT OR Apache-2.0**: [MIT](LICENSE-MIT), [Apache-2.0](LICENSE-APACHE). Commercial integration is permitted under those licenses. Dependencies retain their own licenses; Npcap and TShark are obtained separately. See the [contribution guide](CONTRIBUTING.md) and [security policy](SECURITY.md).
